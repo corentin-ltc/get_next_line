@@ -1,5 +1,5 @@
 
-#define BUFFER_SIZE 500
+#define BUFFER_SIZE 5
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -40,11 +40,19 @@ int     stashcheck(char *stash)
         i = 0;
         while (stash[i])
         {
-                if (stash[i] == '\n');
+                if (stash[i] == '\n')
                         return (i);
                 i++;
         }
         return (0);
+}
+
+void     resetline(char *stash)
+{
+        long    i;
+
+        i = 0;
+
 }
 
 char    *get_next_line(int fd)
@@ -57,9 +65,11 @@ char    *get_next_line(int fd)
         char    *nextline;
 
 
+        printf("%s", stash);
         sz = read(fd, buffer, BUFFER_SIZE);
         buffer[sz] = 0;
         stash = ft_strdup(buffer);
+  //      printf("%s\n", stash);
         if(!stash)
                 return (NULL);
         while (!stashcheck(stash))
@@ -84,15 +94,26 @@ char    *get_next_line(int fd)
                 free(nextline);
         }
         i = 0;
+        printf("%s\n", stash);
         while (stash[i] && stash[i] != '\n')
                 i++;
+        if (stash[i] == '\n')
+                i++;
         nextline = malloc(sizeof(char) * (i + 1));
+        i = 0;
         while (stash[i] && stash[i] != '\n')
+        {
+                nextline[i] = stash[i];
+              //  stash[i] = 0;
+                i++;
+        }
+        if (stash[i] == '\n')
         {
                 nextline[i] = stash[i];
                 i++;
         }
         nextline[i] = 0;
+        resetline(stash);
         return (nextline);
 }
 
@@ -106,7 +127,14 @@ int main(int argc, char **argv)
                 return (0);
         }
         fd = open(argv[1], O_RDONLY);
-        printf("%s", get_next_line(fd));
+
+        
+        get_next_line(fd);
+        get_next_line(fd);
+
+      //  printf("%s", get_next_line(fd));
+        //printf("%s", get_next_line(fd));
+ //       printf("%s", get_next_line(fd));
 }
 
 
