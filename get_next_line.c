@@ -1,125 +1,128 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   get_next_line.c                                    :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: cle-tort <cle-tort@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/05/25 19:14:03 by cle-tort          #+#    #+#             */
+/*   Updated: 2024/05/25 19:31:18 by cle-tort         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-#define BUFFER_SIZE 5
-#include <stdio.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include "get_next_line.h"
 
-int     ft_strlen(char *str)
+char	*resetline(char *buffer, char *stash)
 {
-        int i;
+	long		i;
+	long		j;
+	char		*tmp;
 
-        i = 0;
-        while(str[i])
-                i++;
-        return (i);
+	tmp = malloc(sizeof(char) * (BUFFER_SIZE + 1));
+	if (!tmp)
+	{
+		free(stash);
+		return (NULL);
+	}
+	i = 0;
+	while (buffer[i] && buffer[i] != '\n')
+		i++;
+	if (buffer[i] == '\n')
+		i++;
+	j = 0;
+	while (buffer[i + j])
+	{
+		tmp[j] = buffer[i + j];
+		j++;
+	}
+	tmp[j] = 0;
+	buffer = ft_strcpy(buffer, tmp);
+	free(tmp);
+	return (stash);
 }
 
-char	*ft_strdup(char *src)
+void	ft_bzero(char *s)
 {
-	char	*dest;
-	int		i;
+	size_t	i;
 
-	dest = malloc(sizeof(char) * ft_strlen(src) + 1);
-	if (!dest)
-		return (NULL);
 	i = 0;
-	while (src[i])
+	while (s[i])
 	{
-		dest[i] = src[i];
+		s[i] = 0;
 		i++;
 	}
-	dest[i] = 0;
-	return (dest);
 }
 
-int     stashcheck(char *stash)
+char	*gnl3(char *stash, int *ptr_sur_sz, char *buffer, int fd)
 {
-        long    i;
+	char	*tmp;
 
-        i = 0;
-        while (stash[i])
-        {
-                if (stash[i] == '\n')
-                        return (i);
-                i++;
-        }
-        return (0);
+	tmp = ft_strdup(stash);
+	free(stash);
+	*ptr_sur_sz = read(fd, buffer, BUFFER_SIZE);
+	if (*ptr_sur_sz < 0)
+	{
+		ft_bzero(buffer);
+		free(tmp);
+		return (NULL);
+	}
+	buffer[*ptr_sur_sz] = 0;
+	stash = malloc(sizeof(char) * (ft_strlen(buffer) + ft_strlen(tmp) + 2));
+	if (!stash)
+	{
+		free(tmp);
+		return (NULL);
+	}
+	stash = getcontent(tmp, buffer, stash);
+	return (stash);
 }
 
-void     resetline(char *stash)
+int	gnl2(int *ptr_sur_sz, char *buffer, int fd)
 {
-        long    i;
-
-        i = 0;
-
+	*ptr_sur_sz = read(fd, buffer, BUFFER_SIZE);
+	if (*ptr_sur_sz < 0)
+	{
+		ft_bzero(buffer);
+		return (0);
+	}
+	buffer[*ptr_sur_sz] = 0;
+	if (*ptr_sur_sz == 0)
+		return (0);
+	return (1);
 }
 
-char    *get_next_line(int fd)
+char	*get_next_line(int fd)
 {
-        char       buffer[BUFFER_SIZE];
-        static char     *stash;
-        int              sz;
-        long             i;
-        long            j;
-        char    *nextline;
+	static char		buffer[FD_MAX][BUFFER_SIZE + 1] = {{0}};
+	int				sz;
+	char			*stash;
+	int				*ptr_sur_sz;
 
-
-        printf("%s", stash);
-        sz = read(fd, buffer, BUFFER_SIZE);
-        buffer[sz] = 0;
-        stash = ft_strdup(buffer);
-  //      printf("%s\n", stash);
-        if(!stash)
-                return (NULL);
-        while (!stashcheck(stash))
-        {
-                nextline = ft_strdup(stash);
-                free(stash);
-                read(fd, buffer, BUFFER_SIZE);
-                buffer[sz] = 0;
-                stash = malloc(sizeof(char) * (ft_strlen(nextline) + sz + 1));
-                i = 0;
-                while (nextline[i])
-                {
-                        stash[i] = nextline[i];
-                        i++;
-                }
-                j = 0;
-                while (buffer[j])
-                {
-                        stash[i + j] = buffer[j];
-                        j++;
-                }
-                free(nextline);
-        }
-        i = 0;
-        printf("%s\n", stash);
-        while (stash[i] && stash[i] != '\n')
-                i++;
-        if (stash[i] == '\n')
-                i++;
-        nextline = malloc(sizeof(char) * (i + 1));
-        i = 0;
-        while (stash[i] && stash[i] != '\n')
-        {
-                nextline[i] = stash[i];
-              //  stash[i] = 0;
-                i++;
-        }
-        if (stash[i] == '\n')
-        {
-                nextline[i] = stash[i];
-                i++;
-        }
-        nextline[i] = 0;
-        resetline(stash);
-        return (nextline);
+	ptr_sur_sz = &sz;
+	sz = 1;
+	if (fd > FD_MAX || fd < 0 || BUFFER_SIZE <= 0)
+		return (NULL);
+	if (!buffer[fd][0])
+	{
+		if (!gnl2(ptr_sur_sz, buffer[fd], fd))
+			return (NULL);
+	}
+	stash = ft_strdup(buffer[fd]);
+	if (!stash)
+		return (NULL);
+	while (!stashcheck(stash, sz))
+	{
+		stash = gnl3(stash, ptr_sur_sz, buffer[fd], fd);
+		if (!stash)
+			return (NULL);
+	}
+	return (resetline(buffer[fd], stash));
 }
-
+/*
 int main(int argc, char **argv)
 {
         int     fd;
+	char	*str;
 
         if (argc != 2)
         {
@@ -127,23 +130,12 @@ int main(int argc, char **argv)
                 return (0);
         }
         fd = open(argv[1], O_RDONLY);
-
-        
-        get_next_line(fd);
-        get_next_line(fd);
-
-      //  printf("%s", get_next_line(fd));
-        //printf("%s", get_next_line(fd));
- //       printf("%s", get_next_line(fd));
-}
-
-
-
-
-
-
-
-
-
-
-
+	str = get_next_line(fd);
+	printf("%s", str);
+	while (str)
+	{
+		free(str);
+		str = get_next_line(fd);
+		printf("%s", str);
+	}
+}*/
